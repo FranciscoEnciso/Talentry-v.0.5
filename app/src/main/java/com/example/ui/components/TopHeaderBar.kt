@@ -27,6 +27,8 @@ fun TopHeaderBar(
     onBranchSelected: (String) -> Unit,
     isDarkMode: Boolean,
     onToggleDarkMode: () -> Unit,
+    isDesktopMode: Boolean = true,
+    onToggleDesktopMode: (() -> Unit)? = null,
     onMenuClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -140,6 +142,19 @@ fun TopHeaderBar(
                                     }
                                 )
                             }
+                        }
+                    }
+
+                    if (onToggleDesktopMode != null) {
+                        IconButton(
+                            onClick = onToggleDesktopMode,
+                            modifier = Modifier.testTag("desktop_mode_toggle_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isDesktopMode) Icons.Default.DesktopWindows else Icons.Default.PhoneIphone,
+                                contentDescription = "Cambiar vista Desktop / Móvil",
+                                tint = if (isDesktopMode) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
