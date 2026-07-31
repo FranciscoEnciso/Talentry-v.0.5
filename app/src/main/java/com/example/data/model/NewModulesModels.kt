@@ -15,19 +15,49 @@ data class FormTemplate(
 data class FormQuestion(
     val id: String,
     val promptText: String,
-    val type: QuestionType, // TEXT_SHORT, TEXT_LONG, MULTIPLE_CHOICE, FILE_UPLOAD, YES_NO, DATE
+    val type: QuestionType,
     val isRequired: Boolean = true,
-    val options: List<String> = emptyList() // For multiple choice
+    val options: List<String> = emptyList(),
+    val helpText: String = "",
+    val placeholder: String = "",
+    val validationRule: ValidationRule = ValidationRule(),
+    val conditionalRule: ConditionalRule? = null
 )
 
 enum class QuestionType(val label: String) {
     TEXT_SHORT("Texto corto"),
     TEXT_LONG("Texto largo"),
-    MULTIPLE_CHOICE("Opción múltiple"),
+    SPLIT_NAME("Nombre Completo (Nombre, Ap. Paterno, Ap. Materno)"),
+    MULTIPLE_CHOICE("Opción múltiple (Radio)"),
+    DROPDOWN("Lista desplegable (Select)"),
+    CHECKBOXES("Casillas de verificación (Multi-select)"),
     FILE_UPLOAD("Carga de archivo (CV / INE / PDF)"),
     YES_NO("Sí / No"),
     DATE("Fecha / Calendario")
 }
+
+data class ValidationRule(
+    val type: ValidationType = ValidationType.NONE,
+    val minLength: Int? = null,
+    val maxLength: Int? = null,
+    val exactLength: Int? = null,
+    val dateFormat: String = "DD/MM/YYYY", // "DD/MM/YYYY", "MM/YYYY", "YYYY"
+    val forbiddenWords: List<String> = emptyList()
+)
+
+enum class ValidationType(val label: String) {
+    NONE("Sin validación especial"),
+    EMAIL("Correo electrónico válido"),
+    PHONE("Teléfono de 10 dígitos"),
+    CURP("CURP (18 caracteres)"),
+    RFC("RFC (12-13 caracteres)"),
+    NSS("NSS IMSS (11 dígitos)")
+}
+
+data class ConditionalRule(
+    val parentQuestionId: String,
+    val expectedAnswer: String
+)
 
 data class FormSubmission(
     val id: String,

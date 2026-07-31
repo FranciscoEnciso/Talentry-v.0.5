@@ -1,5 +1,6 @@
 package com.example.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Task
+import com.example.data.model.*
 import com.example.ui.components.*
 import com.example.ui.screens.*
 import com.example.ui.theme.ElectricBlue
@@ -27,6 +29,12 @@ import com.example.ui.theme.ElectricBlueContainer
 import com.example.ui.theme.ElectricBlueOnContainer
 import com.example.ui.viewmodel.TalentryViewModel
 import kotlinx.coroutines.launch
+
+data class NavigationMenuItem(
+    val tabIndex: Int,
+    val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,403 +76,414 @@ fun TalentryNavigation(
     var showNewInterviewDialog by remember { mutableStateOf(false) }
     var showNewTaskDialog by remember { mutableStateOf(false) }
 
+    val drawerMenuItems = remember {
+        listOf(
+            NavigationMenuItem(0, "Mi Día", Icons.Default.WbSunny),
+            NavigationMenuItem(3, "Candidatos", Icons.Default.People),
+            NavigationMenuItem(4, "Postulaciones", Icons.Default.ViewColumn),
+            NavigationMenuItem(2, "Vacantes", Icons.Default.Work),
+            NavigationMenuItem(6, "Entrevistas", Icons.Default.AssignmentInd),
+            NavigationMenuItem(5, "Tareas", Icons.Default.CheckCircle),
+            NavigationMenuItem(12, "Documentación", Icons.Default.FolderShared),
+            NavigationMenuItem(1, "Dashboard", Icons.Default.Dashboard),
+            NavigationMenuItem(7, "Reportes", Icons.Default.BarChart),
+            NavigationMenuItem(11, "Auditoría / WhatsApp", Icons.Default.MarkChatUnread),
+            NavigationMenuItem(8, "Configuración", Icons.Default.Settings)
+        )
+    }
+
+    val currentModuleTitle = drawerMenuItems.firstOrNull { it.tabIndex == selectedTab }?.label ?: "Mi Día"
+
+    BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        scrimColor = Color.Black.copy(alpha = 0.65f),
         drawerContent = {
-            ModalDrawerSheet(
-                drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+            Box(
                 modifier = Modifier
-                    .width(310.dp)
                     .fillMaxHeight()
+                    .padding(vertical = 32.dp, horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Column(
+                ModalDrawerSheet(
+                    drawerShape = RoundedCornerShape(28.dp),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
+                        .width(280.dp)
+                        .fillMaxHeight(0.85f)
                 ) {
-                    // Header Logo & Brand
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(ElectricBlue),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "T",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 24.sp
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = "Talentry",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                                Text(
-                                    text = "Talento que impulsa",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        IconButton(onClick = { coroutineScope.launch { drawerState.close() } }) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar menú")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Menu Items List
                     Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            .fillMaxSize()
+                            .padding(20.dp)
                     ) {
-                        val drawerMenuItems = listOf(
-                            NavigationMenuItem(0, "Mi Día", Icons.Default.WbSunny),
-                            NavigationMenuItem(1, "Dashboard", Icons.Default.Dashboard),
-                            NavigationMenuItem(3, "Candidatos", Icons.Default.People),
-                            NavigationMenuItem(12, "Expediente 360°", Icons.Default.FolderShared),
-                            NavigationMenuItem(4, "Postulaciones", Icons.Default.ViewColumn),
-                            NavigationMenuItem(2, "Vacantes", Icons.Default.Work),
-                            NavigationMenuItem(10, "Formularios", Icons.Default.Description),
-                            NavigationMenuItem(11, "WhatsApp & Reglas", Icons.Default.MarkChatUnread),
-                            NavigationMenuItem(6, "Entrevistas", Icons.Default.AssignmentInd),
-                            NavigationMenuItem(5, "Agenda", Icons.Default.CalendarMonth),
-                            NavigationMenuItem(7, "Reportes", Icons.Default.BarChart),
-                            NavigationMenuItem(9, "IA Assistant", Icons.Default.AutoAwesome),
-                            NavigationMenuItem(8, "Configuración", Icons.Default.Settings)
-                        )
-
-                        drawerMenuItems.forEach { item ->
-                            val isSelected = selectedTab == item.tabIndex
-                            NavigationDrawerItem(
-                                icon = {
-                                    Icon(
-                                        imageVector = item.icon,
-                                        contentDescription = item.label,
-                                        tint = if (isSelected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                label = {
+                        // Header Logo & Brand
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(ElectricBlue),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = item.label,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        text = "T",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 24.sp
                                     )
-                                },
-                                selected = isSelected,
-                                onClick = {
-                                    selectedTab = item.tabIndex
-                                    coroutineScope.launch { drawerState.close() }
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = NavigationDrawerItemDefaults.colors(
-                                    selectedContainerColor = ElectricBlueContainer,
-                                    selectedTextColor = ElectricBlueOnContainer
-                                ),
+                                }
+                                Column {
+                                    Text(
+                                        text = "Talentry",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Text(
+                                        text = "Talento que impulsa",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { coroutineScope.launch { drawerState.close() } },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar menú",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Menu Items List
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            drawerMenuItems.forEach { item ->
+                                val isSelected = selectedTab == item.tabIndex
+                                NavigationDrawerItem(
+                                    icon = {
+                                        Icon(
+                                            imageVector = item.icon,
+                                            contentDescription = item.label,
+                                            tint = if (isSelected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = item.label,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    selected = isSelected,
+                                    onClick = {
+                                        selectedTab = item.tabIndex
+                                        coroutineScope.launch { drawerState.close() }
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = NavigationDrawerItemDefaults.colors(
+                                        selectedContainerColor = ElectricBlueContainer,
+                                        selectedTextColor = ElectricBlueOnContainer
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("drawer_item_${item.tabIndex}")
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // User Profile Card at bottom
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .testTag("drawer_item_${item.tabIndex}")
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // User Profile Card at bottom
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(ElectricBlue),
-                                contentAlignment = Alignment.Center
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("FE", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Francisco Enciso",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Reclutador Senior",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(ElectricBlue),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("FE", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Francisco Enciso",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Reclutador",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null)
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                    OutlinedButton(
-                        onClick = { coroutineScope.launch { drawerState.close() } },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Cerrar sesión")
-                    }
-                }
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopHeaderBar(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    selectedBranch = selectedBranchFilter,
-                    onBranchSelected = { viewModel.setBranchFilter(it) },
-                    isDarkMode = isDarkMode,
-                    onToggleDarkMode = { viewModel.toggleDarkMode() },
-                    isDesktopMode = isDesktopMode,
-                    onToggleDesktopMode = { viewModel.toggleDesktopMode() },
-                    onMenuClick = { coroutineScope.launch { drawerState.open() } }
-                )
-            },
-            bottomBar = {
-                if (!isDesktopMode) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp,
-                        shadowElevation = 8.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .padding(horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
+                        OutlinedButton(
+                            onClick = { coroutineScope.launch { drawerState.close() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            BottomNavItem(
-                                icon = Icons.Default.Home,
-                                label = "Mi Día",
-                                isSelected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                modifier = Modifier.testTag("bottom_nav_my_day")
-                            )
-
-                            BottomNavItem(
-                                icon = Icons.Default.People,
-                                label = "Candidatos",
-                                isSelected = selectedTab == 3,
-                                onClick = { selectedTab = 3 },
-                                modifier = Modifier.testTag("bottom_nav_candidates")
-                            )
-
-                            FloatingActionButton(
-                                onClick = { showQuickActionsSheet = true },
-                                containerColor = ElectricBlue,
-                                contentColor = Color.White,
-                                shape = CircleShape,
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .testTag("quick_action_fab")
-                            ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Acciones rápidas")
-                            }
-
-                            BottomNavItem(
-                                icon = Icons.Default.CalendarMonth,
-                                label = "Agenda",
-                                isSelected = selectedTab == 5,
-                                onClick = { selectedTab = 5 },
-                                modifier = Modifier.testTag("bottom_nav_agenda")
-                            )
-
-                            BottomNavItem(
-                                icon = Icons.Default.Menu,
-                                label = "Más",
-                                isSelected = drawerState.isOpen,
-                                onClick = { coroutineScope.launch { drawerState.open() } },
-                                modifier = Modifier.testTag("bottom_nav_more")
-                            )
+                            Icon(imageVector = Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Cerrar sesión")
                         }
                     }
                 }
             }
-        ) { innerPadding ->
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // Desktop First Navigation Rail / Widescreen Left Sidebar
-                if (isDesktopMode) {
-                    DesktopNavigationSidebar(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        onQuickActionClick = { showQuickActionsSheet = true }
+        },
+        content = {
+            Scaffold(
+                topBar = {
+                    TopHeaderBar(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                        selectedBranch = selectedBranchFilter,
+                        onBranchSelected = { viewModel.setBranchFilter(it) },
+                        isDarkMode = isDarkMode,
+                        onToggleDarkMode = { viewModel.toggleDarkMode() },
+                        currentModuleTitle = currentModuleTitle,
+                        isDesktopMode = isDesktopMode,
+                        onToggleDesktopMode = { viewModel.toggleDesktopMode() },
+                        onMenuClick = { coroutineScope.launch { drawerState.open() } }
                     )
+                },
+                bottomBar = {
+                    if (!isDesktopMode) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 6.dp,
+                            shadowElevation = 8.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp)
+                                    .padding(horizontal = 28.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BottomNavItem(
+                                    icon = Icons.Default.Home,
+                                    label = "Mi Día",
+                                    isSelected = selectedTab == 0,
+                                    onClick = { selectedTab = 0 },
+                                    modifier = Modifier.testTag("bottom_nav_my_day")
+                                )
+
+                                FloatingActionButton(
+                                    onClick = { showQuickActionsSheet = true },
+                                    containerColor = ElectricBlue,
+                                    contentColor = Color.White,
+                                    shape = CircleShape,
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .testTag("quick_action_fab")
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Acciones rápidas")
+                                }
+
+                                BottomNavItem(
+                                    icon = Icons.Default.Notifications,
+                                    label = "Notificaciones",
+                                    badgeCount = 3,
+                                    isSelected = selectedTab == 11,
+                                    onClick = { selectedTab = 11 },
+                                    modifier = Modifier.testTag("bottom_nav_notifications")
+                                )
+                            }
+                        }
+                    }
                 }
-
-                Box(
+            ) { innerPadding ->
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
+                        .fillMaxSize()
+                        .padding(innerPadding)
                 ) {
-                    when (selectedTab) {
-                        0 -> MyDayScreen(
-                            tasks = tasks,
-                            interviewsToday = interviews,
-                            onToggleTask = { id, isDone -> viewModel.toggleTaskCompleted(id, isDone) },
-                            onAddNewTaskClick = { showNewTaskDialog = true },
-                            onScheduleInterviewClick = { showNewInterviewDialog = true }
+                    if (isDesktopMode) {
+                        DesktopNavigationSidebar(
+                            selectedTab = selectedTab,
+                            onTabSelected = { selectedTab = it },
+                            onQuickActionClick = { showQuickActionsSheet = true }
                         )
+                    }
 
-                        1 -> DashboardScreen(
-                            vacancies = vacancies,
-                            candidates = candidates
-                        )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
+                        when (selectedTab) {
+                            0 -> MyDayScreen(
+                                tasks = tasks,
+                                interviewsToday = interviews,
+                                onToggleTask = { id, isDone -> viewModel.toggleTaskCompleted(id, isDone) },
+                                onAddNewTaskClick = { showNewTaskDialog = true },
+                                onScheduleInterviewClick = { showNewInterviewDialog = true }
+                            )
 
-                        2 -> VacanciesScreen(
-                            vacancies = vacancies,
-                            selectedBranchFilter = selectedBranchFilter,
-                            onAddNewVacancyClick = { showNewVacancyDialog = true },
-                            onDeleteVacancy = { viewModel.deleteVacancy(it) },
-                            onToggleStatus = { vac ->
-                                val newStatus = if (vac.status == "Activa") "En Pausa" else "Activa"
-                                viewModel.updateVacancy(vac.copy(status = newStatus))
-                            }
-                        )
+                            1 -> DashboardScreen(
+                                vacancies = vacancies,
+                                candidates = candidates
+                            )
 
-                        3 -> CandidatesScreen(
-                            candidates = candidates,
-                            searchQuery = searchQuery,
-                            onAddNewCandidateClick = { showNewCandidateDialog = true },
-                            onDeleteCandidate = { viewModel.deleteCandidate(it) },
-                            onRunAiFitAnalysis = { cand ->
-                                viewModel.analyzeCandidateFitWithAi(cand.fullName, "${cand.experienceYears} años exp", cand.appliedVacancyTitle)
-                                selectedTab = 9
-                            }
-                        )
+                            2 -> VacanciesScreen(
+                                vacancies = vacancies,
+                                selectedBranchFilter = selectedBranchFilter,
+                                onAddNewVacancyClick = { showNewVacancyDialog = true },
+                                onDeleteVacancy = { viewModel.deleteVacancy(it) },
+                                onToggleStatus = { vac ->
+                                    val newStatus = if (vac.status == "Activa") "En Pausa" else "Activa"
+                                    viewModel.updateVacancy(vac.copy(status = newStatus))
+                                }
+                            )
 
-                        4 -> PipelineScreen(
-                            applications = applications,
-                            onUpdateStage = { appId, candidateId, newStage ->
-                                viewModel.updateApplicationStage(appId, candidateId, newStage)
-                            }
-                        )
+                            3 -> CandidatesScreen(
+                                candidates = candidates,
+                                searchQuery = searchQuery,
+                                onAddNewCandidateClick = { showNewCandidateDialog = true },
+                                onDeleteCandidate = { viewModel.deleteCandidate(it) },
+                                onRunAiFitAnalysis = { cand ->
+                                    viewModel.analyzeCandidateFitWithAi(cand.fullName, "${cand.experienceYears} años exp", cand.appliedVacancyTitle)
+                                    selectedTab = 9
+                                }
+                            )
 
-                        5 -> AgendaScreen(
-                            interviews = interviews,
-                            onScheduleInterviewClick = { showNewInterviewDialog = true }
-                        )
+                            4 -> PipelineScreen(
+                                applications = applications,
+                                onUpdateStage = { appId, candidateId, newStage ->
+                                    viewModel.updateApplicationStage(appId, candidateId, newStage)
+                                }
+                            )
 
-                        6 -> InterviewsScreen(
-                            interviews = interviews,
-                            onScheduleInterviewClick = { showNewInterviewDialog = true },
-                            onUpdateResult = { id, status, feedback ->
-                                viewModel.updateInterviewResult(id, status, feedback)
-                            },
-                            onGenerateAiSummary = { candName, feedback ->
-                                viewModel.generateInterviewSummaryWithAi(candName, feedback)
-                                selectedTab = 9
-                            }
-                        )
+                            5 -> AgendaScreen(
+                                interviews = interviews,
+                                onScheduleInterviewClick = { showNewInterviewDialog = true }
+                            )
 
-                        7 -> ReportsScreen(
-                            vacancies = vacancies,
-                            candidates = candidates
-                        )
+                            6 -> InterviewsScreen(
+                                interviews = interviews,
+                                onScheduleInterviewClick = { showNewInterviewDialog = true },
+                                onUpdateResult = { id, status, feedback ->
+                                    viewModel.updateInterviewResult(id, status, feedback)
+                                },
+                                onGenerateAiSummary = { candName, feedback ->
+                                    viewModel.generateInterviewSummaryWithAi(candName, feedback)
+                                    selectedTab = 9
+                                }
+                            )
 
-                        8 -> SettingsScreen(
-                            isDarkMode = isDarkMode,
-                            onToggleDarkMode = { viewModel.toggleDarkMode() }
-                        )
+                            7 -> ReportsScreen(
+                                vacancies = vacancies,
+                                candidates = candidates
+                            )
 
-                        9 -> AiScreen(
-                            aiOutputText = aiOutputText,
-                            isAiLoading = isAiLoading,
-                            onClearAiOutput = { viewModel.clearAiOutput() },
-                            onGenerateJobDescription = { title, branch, reqs ->
-                                viewModel.generateJobDescriptionWithAi(title, branch, reqs)
-                            },
-                            onAnalyzeFit = { name, exp, vac ->
-                                viewModel.analyzeCandidateFitWithAi(name, exp, vac)
-                            },
-                            onGenerateAutoMessage = { name, stage ->
-                                viewModel.generateAutoResponseWithAi(name, stage)
-                            },
-                            onAnalyzeIntent = { name, snippet ->
-                                viewModel.analyzeConversationIntentWithAi(name, snippet)
-                            }
-                        )
+                            8 -> SettingsScreen(
+                                isDarkMode = isDarkMode,
+                                onToggleDarkMode = { viewModel.toggleDarkMode() }
+                            )
 
-                        10 -> FormsScreen(
-                            formTemplates = formTemplates,
-                            formSubmissions = formSubmissions,
-                            onAddTemplate = { viewModel.addFormTemplate(it) },
-                            onToggleTemplateStatus = { viewModel.toggleFormTemplateStatus(it) },
-                            onSimulateCandidateSubmission = { tid, title, candName, answers ->
-                                viewModel.addFormSubmissionFromCandidate(tid, title, candName, answers)
-                            }
-                        )
+                            9 -> AiScreen(
+                                aiOutputText = aiOutputText,
+                                isAiLoading = isAiLoading,
+                                onClearAiOutput = { viewModel.clearAiOutput() },
+                                onGenerateJobDescription = { title, branch, reqs ->
+                                    viewModel.generateJobDescriptionWithAi(title, branch, reqs)
+                                },
+                                onAnalyzeFit = { name, exp, vac ->
+                                    viewModel.analyzeCandidateFitWithAi(name, exp, vac)
+                                },
+                                onGenerateAutoMessage = { name, stage ->
+                                    viewModel.generateAutoResponseWithAi(name, stage)
+                                },
+                                onAnalyzeIntent = { name, snippet ->
+                                    viewModel.analyzeConversationIntentWithAi(name, snippet)
+                                }
+                            )
 
-                        11 -> WhatsAppAutomationScreen(
-                            rules = whatsAppRules,
-                            iftttRules = workflowIftttRules,
-                            messages = whatsAppMessages,
-                            onAddRule = { viewModel.addWhatsAppRule(it) },
-                            onToggleRule = { viewModel.toggleWhatsAppRule(it) },
-                            onAddIftttRule = { viewModel.addWorkflowIftttRule(it) },
-                            onToggleIftttRule = { viewModel.toggleWorkflowIftttRule(it) },
-                            onExecuteIftttRule = { rule, candName -> viewModel.executeWorkflowIftttRule(rule, candName) },
-                            onSendMessage = { text, name -> viewModel.sendSimulatedCandidateMessage(text, name) }
-                        )
+                            10 -> FormsScreen(
+                                formTemplates = formTemplates,
+                                formSubmissions = formSubmissions,
+                                onAddTemplate = { viewModel.addFormTemplate(it) },
+                                onUpdateTemplate = { viewModel.updateFormTemplate(it) },
+                                onDeleteTemplate = { viewModel.deleteFormTemplate(it) },
+                                onToggleTemplateStatus = { viewModel.toggleFormTemplateStatus(it) },
+                                onSimulateCandidateSubmission = { tid, title, candName, answers ->
+                                    viewModel.addFormSubmissionFromCandidate(tid, title, candName, answers)
+                                }
+                            )
 
-                        12 -> ExpedienteDigitalScreen(
-                            candidates = candidates,
-                            documents = candidateDocuments,
-                            timeline = dossierTimeline,
-                            messages = whatsAppMessages,
-                            formSubmissions = formSubmissions,
-                            onUpdateDocumentStatus = { id, status -> viewModel.updateDocumentStatus(id, status) },
-                            onAddDocument = { docName, fileName -> viewModel.addCandidateDocument(docName, fileName) },
-                            onAddTimelineEvent = { t, d, type -> viewModel.addTimelineEvent(t, d, type) },
-                            onNavigateToWhatsApp = { selectedTab = 11 }
-                        )
+                            11 -> WhatsAppAutomationScreen(
+                                rules = whatsAppRules,
+                                iftttRules = workflowIftttRules,
+                                messages = whatsAppMessages,
+                                onAddRule = { viewModel.addWhatsAppRule(it) },
+                                onToggleRule = { viewModel.toggleWhatsAppRule(it) },
+                                onAddIftttRule = { viewModel.addWorkflowIftttRule(it) },
+                                onToggleIftttRule = { viewModel.toggleWorkflowIftttRule(it) },
+                                onExecuteIftttRule = { rule, candName -> viewModel.executeWorkflowIftttRule(rule, candName) },
+                                onSendMessage = { text, name -> viewModel.sendSimulatedCandidateMessage(text, name) }
+                            )
+
+                            12 -> ExpedienteDigitalScreen(
+                                candidates = candidates,
+                                documents = candidateDocuments,
+                                timeline = dossierTimeline,
+                                messages = whatsAppMessages,
+                                formSubmissions = formSubmissions,
+                                onUpdateDocumentStatus = { id, status -> viewModel.updateDocumentStatus(id, status) },
+                                onAddDocument = { docName, fileName -> viewModel.addCandidateDocument(docName, fileName) },
+                                onAddTimelineEvent = { t, d, type -> viewModel.addTimelineEvent(t, d, type) },
+                                onNavigateToWhatsApp = { selectedTab = 11 }
+                            )
+                        }
                     }
                 }
             }
         }
-    }
+    )
 
     // Quick Action Dialog Sheet
     if (showQuickActionsSheet) {
@@ -645,18 +664,13 @@ fun TalentryNavigation(
     }
 }
 
-data class NavigationMenuItem(
-    val tabIndex: Int,
-    val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector
-)
-
 @Composable
 fun BottomNavItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
+    badgeCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -667,12 +681,25 @@ fun BottomNavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp)
-        )
+        BadgedBox(
+            badge = {
+                if (badgeCount > 0) {
+                    Badge(
+                        containerColor = ElectricBlue,
+                        contentColor = Color.White
+                    ) {
+                        Text("$badgeCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
         Text(
             text = label,
             fontSize = 11.sp,
@@ -754,7 +781,6 @@ fun DesktopNavigationSidebar(
                 .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -774,7 +800,6 @@ fun DesktopNavigationSidebar(
                 )
             }
 
-            // Central Quick Action Button (+)
             Button(
                 onClick = onQuickActionClick,
                 colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
@@ -791,7 +816,6 @@ fun DesktopNavigationSidebar(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
 
-            // Scrollable menu list
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -852,7 +876,6 @@ fun DesktopNavigationSidebar(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
 
-            // Mini user status
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -875,4 +898,3 @@ fun DesktopNavigationSidebar(
         }
     }
 }
-

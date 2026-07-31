@@ -73,7 +73,7 @@ fun MyDayScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Hola, Francisco 👋",
+                            text = "Hola, Francisco",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -172,7 +172,7 @@ fun MyDayScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Llamadas pendientes",
+                                text = "Pendientes de contactar",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -364,10 +364,10 @@ fun MyDayScreen(
             }
         }
 
-        // Accordion 3: Llamadas pendientes
+        // Accordion 3: Pendientes de contactar
         item {
             AccordionCard(
-                title = "Llamadas pendientes",
+                title = "Pendientes de contactar",
                 badgeCount = 8,
                 icon = Icons.Default.Phone,
                 isExpanded = expandCalls,

@@ -27,7 +27,8 @@ fun TopHeaderBar(
     onBranchSelected: (String) -> Unit,
     isDarkMode: Boolean,
     onToggleDarkMode: () -> Unit,
-    isDesktopMode: Boolean = true,
+    currentModuleTitle: String = "Mi Día",
+    isDesktopMode: Boolean = false,
     onToggleDesktopMode: (() -> Unit)? = null,
     onMenuClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -37,22 +38,25 @@ fun TopHeaderBar(
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(top = 8.dp, start = 14.dp, end = 14.dp, bottom = 8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Menu Button & Logo & Brand Name
+                // Menu Button & Logo & Brand Name & Module Badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     if (onMenuClick != null) {
                         IconButton(
@@ -81,24 +85,36 @@ fun TopHeaderBar(
                         )
                     }
                     Column {
-                        Text(
-                            text = "Talentry",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Talento que impulsa",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Talentry",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = ElectricBlue.copy(alpha = 0.12f)
+                            ) {
+                                Text(
+                                    text = currentModuleTitle,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = ElectricBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
                 // Branch Selector Dropdown & Dark Mode Toggle
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Box {
                         OutlinedButton(
@@ -145,26 +161,14 @@ fun TopHeaderBar(
                         }
                     }
 
-                    if (onToggleDesktopMode != null) {
-                        IconButton(
-                            onClick = onToggleDesktopMode,
-                            modifier = Modifier.testTag("desktop_mode_toggle_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isDesktopMode) Icons.Default.DesktopWindows else Icons.Default.PhoneIphone,
-                                contentDescription = "Cambiar vista Desktop / Móvil",
-                                tint = if (isDesktopMode) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
                     IconButton(
                         onClick = onToggleDarkMode,
-                        modifier = Modifier.testTag("dark_mode_toggle_button")
+                        modifier = Modifier.testTag("theme_toggle_button")
                     ) {
                         Icon(
                             imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Cambiar tema"
+                            contentDescription = "Cambiar Tema",
+                            tint = ElectricBlue
                         )
                     }
                 }

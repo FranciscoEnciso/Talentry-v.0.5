@@ -29,9 +29,13 @@ fun NewCandidateDialog(
     }
     var vacancyDropdownExpanded by remember { mutableStateOf(false) }
 
+    var isManualDirectEntry by remember { mutableStateOf(false) }
+    var selectedInitialStage by remember { mutableStateOf("Postulado") }
+    var stageDropdownExpanded by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Registrar Candidato", style = MaterialTheme.typography.titleLarge) },
+        title = { Text("Alta Manual de Candidato", style = MaterialTheme.typography.titleLarge) },
         text = {
             Column(
                 modifier = Modifier
@@ -39,10 +43,35 @@ fun NewCandidateDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Alta Manual Directa Notice
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isManualDirectEntry,
+                            onCheckedChange = {
+                                isManualDirectEntry = it
+                                if (it) selectedInitialStage = "Contratado" else selectedInitialStage = "Postulado"
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
+                            Text("Alta Manual / Directa", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Registra candidatos directos omitiendo el flujo habitual de filtros.", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = fullName,
                     onValueChange = { fullName = it },
-                    label = { Text("Nombre Completo") },
+                    label = { Text("Nombre Completo *") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("candidate_name_input")
                 )
@@ -70,6 +99,30 @@ fun NewCandidateDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Stage selector for Alta Manual
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { stageDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Etapa Inicial: $selectedInitialStage")
+                    }
+                    DropdownMenu(
+                        expanded = stageDropdownExpanded,
+                        onDismissRequest = { stageDropdownExpanded = false }
+                    ) {
+                        listOf("Postulado", "Llamada Pendiente", "Entrevista", "Documentos", "Contratado").forEach { stage ->
+                            DropdownMenuItem(
+                                text = { Text(stage) },
+                                onClick = {
+                                    selectedInitialStage = stage
+                                    stageDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { vacancyDropdownExpanded = true },
@@ -96,7 +149,7 @@ fun NewCandidateDialog(
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Observaciones / Filtro Inicial") },
+                    label = { Text("Notas de Alta / Origen Candidato") },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -114,10 +167,10 @@ fun NewCandidateDialog(
                                 email = email.ifBlank { "candidato@talentry.com" },
                                 city = city,
                                 experienceYears = expYearsText.toIntOrNull() ?: 1,
-                                currentStatus = "Postulado",
-                                aiMatchScore = (75..98).random(),
-                                aiSummary = "Perfil registrado correctamente para ${selectedVacancy.title}.",
-                                notes = notes.ifBlank { "Registrado manualmente en plataforma." },
+                                currentStatus = selectedInitialStage,
+                                aiMatchScore = if (isManualDirectEntry) 98 else (75..98).random(),
+                                aiSummary = if (isManualDirectEntry) "Alta manual directa autorizada por Reclutador Senior." else "Perfil registrado correctamente para ${selectedVacancy.title}.",
+                                notes = if (isManualDirectEntry) "[Alta Manual Directa]: ${notes.ifBlank { "Ingreso directo autorizado sin proceso habitual." }}" else notes.ifBlank { "Registrado manualmente en plataforma." },
                                 appliedVacancyId = selectedVacancy.id,
                                 appliedVacancyTitle = selectedVacancy.title
                             )
@@ -127,7 +180,7 @@ fun NewCandidateDialog(
                 },
                 modifier = Modifier.testTag("save_candidate_button")
             ) {
-                Text("Registrar")
+                Text(if (isManualDirectEntry) "Alta Manual Directa" else "Registrar")
             }
         },
         dismissButton = {

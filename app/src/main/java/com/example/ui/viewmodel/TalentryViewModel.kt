@@ -11,10 +11,72 @@ import com.example.data.service.GeminiAiService
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+import android.util.Log
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+
 class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("talentry_prefs", android.content.Context.MODE_PRIVATE)
 
     private val repository = TalentryRepository(TalentryDatabase.getDatabase(application))
     private val aiService = GeminiAiService()
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
+
+    init {
+        setupFirestoreSync()
+    }
+
+    private fun setupFirestoreSync() {
+        try {
+            firestore.collection("form_responses")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("TalentryViewModel", "Firestore sync error", error)
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null && !snapshot.isEmpty) {
+                        val incomingSubmissions = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                val formId = doc.getString("formTemplateId") ?: "FORM-01"
+                                val formTitle = doc.getString("formTitle") ?: "Formulario Web"
+                                val candName = doc.getString("candidateName") ?: "Candidato Web"
+                                val rawAnswers = doc.get("answers") as? List<Map<String, Any?>> ?: emptyList()
+                                val answerItems = rawAnswers.map { ans ->
+                                    FormAnswerItem(
+                                        questionPrompt = ans["question"]?.toString() ?: "",
+                                        answerText = ans["answer"]?.toString() ?: "",
+                                        fileUrl = ans["fileUrl"]?.toString()
+                                    )
+                                }
+                                FormSubmission(
+                                    id = doc.id,
+                                    formTemplateId = formId,
+                                    formTitle = formTitle,
+                                    candidateId = "CAND-${doc.id.takeLast(4)}",
+                                    candidateName = candName,
+                                    submittedAt = "Sincronizado Firebase",
+                                    answers = answerItems,
+                                    aiScore = 95
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        if (incomingSubmissions.isNotEmpty()) {
+                            val existingIds = _formSubmissions.value.map { it.id }.toSet()
+                            val newOnly = incomingSubmissions.filter { it.id !in existingIds }
+                            if (newOnly.isNotEmpty()) {
+                                _formSubmissions.value = newOnly + _formSubmissions.value
+                            }
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e("TalentryViewModel", "Failed to init Firestore sync", e)
+        }
+    }
 
     // Database flows
     val vacancies: StateFlow<List<Vacancy>> = repository.vacancies
@@ -32,7 +94,7 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
     val tasks: StateFlow<List<Task>> = repository.tasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // UI state
+    // UI state & Preferences State Flows
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -42,8 +104,41 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
     private val _selectedStatusFilter = MutableStateFlow("Todos")
     val selectedStatusFilter: StateFlow<String> = _selectedStatusFilter.asStateFlow()
 
-    private val _isDarkMode = MutableStateFlow(true)
+    private val _isDarkMode = MutableStateFlow(prefs.getBoolean("is_dark_mode", true))
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
+
+    private val _monthlyHiringGoal = MutableStateFlow(prefs.getInt("monthly_hiring_goal", 25))
+    val monthlyHiringGoal: StateFlow<Int> = _monthlyHiringGoal.asStateFlow()
+
+    private val _userName = MutableStateFlow(prefs.getString("user_name", "Francisco Enciso") ?: "Francisco Enciso")
+    val userName: StateFlow<String> = _userName.asStateFlow()
+
+    private val _userRole = MutableStateFlow(prefs.getString("user_role", "Reclutador Senior") ?: "Reclutador Senior")
+    val userRole: StateFlow<String> = _userRole.asStateFlow()
+
+    private val _userCompany = MutableStateFlow(prefs.getString("user_company", "Talentry HR SaaS") ?: "Talentry HR SaaS")
+    val userCompany: StateFlow<String> = _userCompany.asStateFlow()
+
+    private val _userEmail = MutableStateFlow(prefs.getString("user_email", "francisco.enciso@talentry.app") ?: "francisco.enciso@talentry.app")
+    val userEmail: StateFlow<String> = _userEmail.asStateFlow()
+
+    private val _pushNotificationsEnabled = MutableStateFlow(prefs.getBoolean("push_notifications", true))
+    val pushNotificationsEnabled: StateFlow<Boolean> = _pushNotificationsEnabled.asStateFlow()
+
+    private val _emailAlertsEnabled = MutableStateFlow(prefs.getBoolean("email_alerts", true))
+    val emailAlertsEnabled: StateFlow<Boolean> = _emailAlertsEnabled.asStateFlow()
+
+    private val _whatsAppAlertsEnabled = MutableStateFlow(prefs.getBoolean("whatsapp_alerts", true))
+    val whatsAppAlertsEnabled: StateFlow<Boolean> = _whatsAppAlertsEnabled.asStateFlow()
+
+    private val _aiModelSelected = MutableStateFlow(prefs.getString("ai_model", "Gemini 2.5 Pro") ?: "Gemini 2.5 Pro")
+    val aiModelSelected: StateFlow<String> = _aiModelSelected.asStateFlow()
+
+    private val _recruitmentMaxDays = MutableStateFlow(prefs.getInt("recruitment_max_days", 30))
+    val recruitmentMaxDays: StateFlow<Int> = _recruitmentMaxDays.asStateFlow()
+
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
+    val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
     // AI State
     private val _aiOutputText = MutableStateFlow("")
@@ -51,6 +146,14 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
 
     private val _isAiLoading = MutableStateFlow(false)
     val isAiLoading: StateFlow<Boolean> = _isAiLoading.asStateFlow()
+
+    fun showSnackbar(message: String) {
+        _snackbarMessage.value = message
+    }
+
+    fun clearSnackbar() {
+        _snackbarMessage.value = null
+    }
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
@@ -65,7 +168,53 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
     }
 
     fun toggleDarkMode() {
-        _isDarkMode.value = !_isDarkMode.value
+        val newValue = !_isDarkMode.value
+        _isDarkMode.value = newValue
+        prefs.edit().putBoolean("is_dark_mode", newValue).apply()
+    }
+
+    fun updateMonthlyHiringGoal(newGoal: Int) {
+        _monthlyHiringGoal.value = newGoal
+        prefs.edit().putInt("monthly_hiring_goal", newGoal).apply()
+        showSnackbar("Meta mensual de contrataciones actualizada a $newGoal plazas.")
+    }
+
+    fun updateUserProfile(name: String, role: String, company: String, email: String) {
+        _userName.value = name
+        _userRole.value = role
+        _userCompany.value = company
+        _userEmail.value = email
+        prefs.edit()
+            .putString("user_name", name)
+            .putString("user_role", role)
+            .putString("user_company", company)
+            .putString("user_email", email)
+            .apply()
+        showSnackbar("Perfil de usuario actualizado con éxito.")
+    }
+
+    fun updateNotificationSettings(push: Boolean, email: Boolean, whatsApp: Boolean) {
+        _pushNotificationsEnabled.value = push
+        _emailAlertsEnabled.value = email
+        _whatsAppAlertsEnabled.value = whatsApp
+        prefs.edit()
+            .putBoolean("push_notifications", push)
+            .putBoolean("email_alerts", email)
+            .putBoolean("whatsapp_alerts", whatsApp)
+            .apply()
+        showSnackbar("Preferencias de notificación guardadas.")
+    }
+
+    fun updateAiSettings(model: String) {
+        _aiModelSelected.value = model
+        prefs.edit().putString("ai_model", model).apply()
+        showSnackbar("Modelo de IA configurado a $model.")
+    }
+
+    fun updateRecruitmentMaxDays(days: Int) {
+        _recruitmentMaxDays.value = days
+        prefs.edit().putInt("recruitment_max_days", days).apply()
+        showSnackbar("Días límite por vacante configurados a $days días.")
     }
 
     // CRUD operations
@@ -119,11 +268,49 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
     }
 
     fun addInterview(interview: Interview) {
-        viewModelScope.launch { repository.addInterview(interview) }
+        viewModelScope.launch {
+            repository.addInterview(interview)
+            showSnackbar("Entrevista agendada con exito para ${interview.candidateName}.")
+            addTimelineEvent(
+                title = "Entrevista Agendada (${interview.type})",
+                description = "Programada para el ${interview.scheduledDateTime} con ${interview.interviewer}.",
+                type = TimelineEventType.INTERVIEW
+            )
+        }
     }
 
     fun updateInterviewResult(id: String, status: String, feedback: String) {
-        viewModelScope.launch { repository.updateInterviewResult(id, status, feedback) }
+        viewModelScope.launch {
+            repository.updateInterviewResult(id, status, feedback)
+            val currentInterviews = interviews.value
+            val targetInterview = currentInterviews.find { it.id == id }
+            
+            val candName = targetInterview?.candidateName ?: "Candidato"
+            val targetCandidateId = targetInterview?.candidateId
+            
+            showSnackbar("Resultado de entrevista registrado: $status")
+            
+            addTimelineEvent(
+                title = "Resultado de Entrevista: $status",
+                description = "Feedback / Comentarios: $feedback",
+                type = TimelineEventType.INTERVIEW
+            )
+
+            // If "No aprobó" or "Descartado", update candidate stage
+            if (status.contains("No aprobó", ignoreCase = true) || status.contains("Rechazado", ignoreCase = true) || status.contains("Descartado", ignoreCase = true)) {
+                if (targetCandidateId != null) {
+                    candidates.value.find { it.id == targetCandidateId }?.let { candidate ->
+                        repository.updateCandidate(candidate.copy(currentStatus = "Descartado", notes = "${candidate.notes}\n[Entrevista - No Aprobó]: $feedback"))
+                    }
+                }
+            } else if (status.contains("Aprobó", ignoreCase = true) || status.contains("Aprobado", ignoreCase = true)) {
+                if (targetCandidateId != null) {
+                    candidates.value.find { it.id == targetCandidateId }?.let { candidate ->
+                        repository.updateCandidate(candidate.copy(currentStatus = "Documentos"))
+                    }
+                }
+            }
+        }
     }
 
     fun addTask(task: Task) {
@@ -185,13 +372,13 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
     }
 
     // =========================================================================
-    // DESKTOP FIRST / ADAPTIVE LAYOUT STATE
+    // MOBILE APP FIRST (OPPO RENO 12 F 5G) / EXCLUSIVE APP LAYOUT STATE
     // =========================================================================
-    private val _isDesktopMode = MutableStateFlow(true)
+    private val _isDesktopMode = MutableStateFlow(false)
     val isDesktopMode: StateFlow<Boolean> = _isDesktopMode.asStateFlow()
 
     fun toggleDesktopMode() {
-        _isDesktopMode.value = !_isDesktopMode.value
+        _isDesktopMode.value = false // Mantener estrictamente como versión de app móvil
     }
 
     // =========================================================================
@@ -282,6 +469,16 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
 
     fun addFormTemplate(template: FormTemplate) {
         _formTemplates.value = listOf(template) + _formTemplates.value
+    }
+
+    fun updateFormTemplate(template: FormTemplate) {
+        _formTemplates.value = _formTemplates.value.map {
+            if (it.id == template.id) template else it
+        }
+    }
+
+    fun deleteFormTemplate(templateId: String) {
+        _formTemplates.value = _formTemplates.value.filter { it.id != templateId }
     }
 
     fun toggleFormTemplateStatus(templateId: String) {
@@ -628,6 +825,20 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
             aiScore = 95
         )
         _formSubmissions.value = listOf(newSub) + _formSubmissions.value
+
+        // Sync submission to Firebase Firestore
+        try {
+            val firestoreData = mapOf(
+                "formTemplateId" to formTemplateId,
+                "formTitle" to formTitle,
+                "candidateName" to candidateName,
+                "answers" to answers.map { mapOf("question" to it.questionPrompt, "answer" to it.answerText, "fileUrl" to it.fileUrl) },
+                "createdAt" to com.google.firebase.Timestamp.now()
+            )
+            firestore.collection("form_responses").add(firestoreData)
+        } catch (e: Exception) {
+            Log.e("TalentryViewModel", "Error pushing submission to Firestore", e)
+        }
 
         // Check if there is a file upload among answers
         answers.filter { it.fileUrl != null || it.answerText.endsWith(".pdf", ignoreCase = true) }.forEach { ans ->

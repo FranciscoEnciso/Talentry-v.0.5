@@ -70,11 +70,12 @@ fun CandidatesScreen(
                     Button(
                         onClick = onAddNewCandidateClick,
                         colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         modifier = Modifier.testTag("add_candidate_button")
                     ) {
                         Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Registrar")
+                        Text("Alta Manual", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }

@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
@@ -19,12 +20,9 @@ fun StatusBadge(
     modifier: Modifier = Modifier
 ) {
     val (bgColor, textColor) = when (status) {
-        "Activa", "Contratado", "Completada", "Oferta / Contratado" -> EmeraldLight to EmeraldOnContainer
-        "En Pausa", "Llamada / Filtro", "Llamada Pendiente", "Entrevista", "Documentos" -> PurpleAILight to PurpleAIOnContainer
-        "Cerrada", "Rechazado", "No Asistió", "Cancelada", "Descartado" -> RoseLight to RoseOnContainer
-        "Alta" -> RoseLight to RoseOnContainer
-        "Media" -> AmberLight to AmberOnContainer
-        "Baja" -> ElectricBlueContainer to ElectricBlueOnContainer
+        "Activa", "Contratado", "Completada", "Oferta / Contratado", "Alta", "Compatible" -> EmeraldLight to EmeraldOnContainer
+        "En Pausa", "Llamada / Filtro", "Llamada Pendiente", "Entrevista", "Documentos", "Media", "Revisar" -> AmberLight to AmberOnContainer
+        "Cerrada", "Rechazado", "No Asistió", "Cancelada", "Descartado", "Baja", "No Compatible" -> RoseLight to RoseOnContainer
         else -> ElectricBlueContainer to ElectricBlueOnContainer
     }
 
@@ -34,9 +32,11 @@ fun StatusBadge(
         fontWeight = FontWeight.Bold,
         letterSpacing = 0.5.sp,
         color = textColor,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier
             .clip(CircleShape)
             .background(bgColor)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     )
 }
