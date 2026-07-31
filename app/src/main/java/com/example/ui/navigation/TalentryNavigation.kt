@@ -50,6 +50,7 @@ fun TalentryNavigation(
     val formTemplates by viewModel.formTemplates.collectAsState()
     val formSubmissions by viewModel.formSubmissions.collectAsState()
     val whatsAppRules by viewModel.whatsAppRules.collectAsState()
+    val workflowIftttRules by viewModel.workflowIftttRules.collectAsState()
     val whatsAppMessages by viewModel.whatsAppMessages.collectAsState()
     val candidateDocuments by viewModel.candidateDocuments.collectAsState()
     val dossierTimeline by viewModel.dossierTimeline.collectAsState()
@@ -420,6 +421,9 @@ fun TalentryNavigation(
                             },
                             onGenerateAutoMessage = { name, stage ->
                                 viewModel.generateAutoResponseWithAi(name, stage)
+                            },
+                            onAnalyzeIntent = { name, snippet ->
+                                viewModel.analyzeConversationIntentWithAi(name, snippet)
                             }
                         )
 
@@ -427,14 +431,21 @@ fun TalentryNavigation(
                             formTemplates = formTemplates,
                             formSubmissions = formSubmissions,
                             onAddTemplate = { viewModel.addFormTemplate(it) },
-                            onToggleTemplateStatus = { viewModel.toggleFormTemplateStatus(it) }
+                            onToggleTemplateStatus = { viewModel.toggleFormTemplateStatus(it) },
+                            onSimulateCandidateSubmission = { tid, title, candName, answers ->
+                                viewModel.addFormSubmissionFromCandidate(tid, title, candName, answers)
+                            }
                         )
 
                         11 -> WhatsAppAutomationScreen(
                             rules = whatsAppRules,
+                            iftttRules = workflowIftttRules,
                             messages = whatsAppMessages,
                             onAddRule = { viewModel.addWhatsAppRule(it) },
                             onToggleRule = { viewModel.toggleWhatsAppRule(it) },
+                            onAddIftttRule = { viewModel.addWorkflowIftttRule(it) },
+                            onToggleIftttRule = { viewModel.toggleWorkflowIftttRule(it) },
+                            onExecuteIftttRule = { rule, candName -> viewModel.executeWorkflowIftttRule(rule, candName) },
                             onSendMessage = { text, name -> viewModel.sendSimulatedCandidateMessage(text, name) }
                         )
 
@@ -445,6 +456,7 @@ fun TalentryNavigation(
                             messages = whatsAppMessages,
                             formSubmissions = formSubmissions,
                             onUpdateDocumentStatus = { id, status -> viewModel.updateDocumentStatus(id, status) },
+                            onAddDocument = { docName, fileName -> viewModel.addCandidateDocument(docName, fileName) },
                             onAddTimelineEvent = { t, d, type -> viewModel.addTimelineEvent(t, d, type) },
                             onNavigateToWhatsApp = { selectedTab = 11 }
                         )

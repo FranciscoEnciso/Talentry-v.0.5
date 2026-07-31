@@ -27,14 +27,20 @@ import com.example.ui.theme.*
 @Composable
 fun WhatsAppAutomationScreen(
     rules: List<WhatsAppRule>,
+    iftttRules: List<WorkflowIftttRule> = emptyList(),
     messages: List<WhatsAppMessage>,
     onAddRule: (WhatsAppRule) -> Unit,
     onToggleRule: (String) -> Unit,
+    onAddIftttRule: (WorkflowIftttRule) -> Unit = {},
+    onToggleIftttRule: (String) -> Unit = {},
+    onExecuteIftttRule: (WorkflowIftttRule, String) -> Unit = { _, _ -> },
     onSendMessage: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var activeTab by remember { mutableStateOf(0) } // 0 = Reglas No-Code, 1 = Simulador en Vivo, 2 = Horarios & Plantillas
+    var activeTab by remember { mutableStateOf(0) } // 0 = Reglas WhatsApp, 1 = Motor IFTTT, 2 = Simulador, 3 = Horarios
     var showNewRuleDialog by remember { mutableStateOf(false) }
+    var showNewIftttDialog by remember { mutableStateOf(false) }
+    var executionFeedback by remember { mutableStateOf<String?>(null) }
     var candidateInputText by remember { mutableStateOf("") }
     var selectedCandidateName by remember { mutableStateOf("Carlos Ramírez") }
 
@@ -89,15 +95,59 @@ fun WhatsAppAutomationScreen(
                     }
                 }
 
-                Button(
-                    onClick = { showNewRuleDialog = true },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E8E3E)),
-                    modifier = Modifier.testTag("new_rule_button")
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = { showNewRuleDialog = true },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E8E3E)),
+                        modifier = Modifier.testTag("new_rule_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Regla WhatsApp", fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = { showNewIftttDialog = true },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                        modifier = Modifier.testTag("new_ifttt_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Regla IFTTT", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (executionFeedback != null) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                border = BorderStroke(1.dp, Color(0xFF2E7D32)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { executionFeedback = null }
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Nueva Regla No-Code", fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32))
+                        Text(
+                            text = executionFeedback!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B5E20)
+                        )
+                    }
+                    Text("Cerrar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                 }
             }
         }
@@ -111,17 +161,22 @@ fun WhatsAppAutomationScreen(
             Tab(
                 selected = activeTab == 0,
                 onClick = { activeTab = 0 },
-                text = { Text("Motor de Reglas No-Code (${rules.size})", fontWeight = FontWeight.Bold) }
+                text = { Text("Reglas WhatsApp (${rules.size})", fontWeight = FontWeight.Bold) }
             )
             Tab(
                 selected = activeTab == 1,
                 onClick = { activeTab = 1 },
-                text = { Text("Simulador & Bandeja en Vivo (${messages.size})", fontWeight = FontWeight.Bold) }
+                text = { Text("Motor IFTTT (${iftttRules.size})", fontWeight = FontWeight.Bold) }
             )
             Tab(
                 selected = activeTab == 2,
                 onClick = { activeTab = 2 },
-                text = { Text("Horarios & Variables Dinámicas", fontWeight = FontWeight.Bold) }
+                text = { Text("Simulador Chat (${messages.size})", fontWeight = FontWeight.Bold) }
+            )
+            Tab(
+                selected = activeTab == 3,
+                onClick = { activeTab = 3 },
+                text = { Text("Horarios & Variables", fontWeight = FontWeight.Bold) }
             )
         }
 
@@ -271,7 +326,156 @@ fun WhatsAppAutomationScreen(
             }
 
             1 -> {
-                // TAB 1: LIVE SIMULATOR & WHATSAPP TRAY
+                // TAB 1: IFTTT RECRUITMENT WORKFLOW ENGINE ("Si sucede esto -> haz esto")
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = ElectricBlueContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = ElectricBlueOnContainer)
+                                Column {
+                                    Text(
+                                        text = "Motor de Automatización de Flujos (IFTTT)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ElectricBlueOnContainer
+                                    )
+                                    Text(
+                                        text = "Configura reglas globales para todo el ciclo de vida del candidato: confirmaciones de entrevista, carga documental, pausas de vacantes y encuestas de salida.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = ElectricBlueOnContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(iftttRules, key = { it.id }) { iftttRule ->
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("ifttt_rule_${iftttRule.id}")
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(CircleShape)
+                                                .background(if (iftttRule.isEnabled) Color(0xFF1E8E3E) else RoseError)
+                                        )
+                                        Text(
+                                            text = iftttRule.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        StatusBadge(status = if (iftttRule.isEnabled) "Activa" else "Pausada")
+                                        Switch(
+                                            checked = iftttRule.isEnabled,
+                                            onCheckedChange = { onToggleIftttRule(iftttRule.id) }
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    // Trigger Box
+                                    Card(
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = ElectricBlue, modifier = Modifier.size(16.dp))
+                                                Text("SI SUCEDE:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = ElectricBlue)
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(iftttRule.triggerType.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                            Text(iftttRule.triggerDescription, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+
+                                    // Action Box
+                                    Card(
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = ElectricBlueContainer.copy(alpha = 0.4f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF1E8E3E), modifier = Modifier.size(16.dp))
+                                                Text("REALIZA ESTO:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF1E8E3E))
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(iftttRule.actionType.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                            Text(iftttRule.actionDescription, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (iftttRule.targetStage != null) {
+                                        StatusBadge(status = "Cambio automático → ${iftttRule.targetStage}")
+                                    } else {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            onExecuteIftttRule(iftttRule, selectedCandidateName)
+                                            executionFeedback = "⚡ Regla ejecutada: '${iftttRule.title}'. Mensaje enviado, expediente y timeline actualizados."
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                                        modifier = Modifier.testTag("run_ifttt_${iftttRule.id}")
+                                    ) {
+                                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("⚡ Ejecutar y Probar Ahora", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            2 -> {
+                // TAB 2: LIVE SIMULATOR & WHATSAPP TRAY
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -511,8 +715,8 @@ fun WhatsAppAutomationScreen(
                 }
             }
 
-            2 -> {
-                // TAB 2: SCHEDULE & VARIABLES
+            3 -> {
+                // TAB 3: SCHEDULE & VARIABLES
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.weight(1f)
@@ -605,6 +809,94 @@ fun WhatsAppAutomationScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showNewRuleDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    if (showNewIftttDialog) {
+        var iftttTitle by remember { mutableStateOf("") }
+        var selectedTrigger by remember { mutableStateOf(IftttTriggerType.INTERVIEW_CONFIRMED) }
+        var selectedAction by remember { mutableStateOf(IftttActionType.UPDATE_STAGE_AND_NOTIFY) }
+        var targetStageText by remember { mutableStateOf("Entrevista") }
+
+        AlertDialog(
+            onDismissRequest = { showNewIftttDialog = false },
+            title = { Text("Nueva Regla de Reclutamiento IFTTT", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = iftttTitle,
+                        onValueChange = { iftttTitle = it },
+                        label = { Text("Título descriptivo de la regla") },
+                        placeholder = { Text("Ej: Si el candidato envía INE -> marcar en revisión") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Selecciona el Disparador (SI SUCEDE ESTO):", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    IftttTriggerType.values().forEach { tType ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedTrigger = tType }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            RadioButton(selected = selectedTrigger == tType, onClick = { selectedTrigger = tType })
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(tType.label, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    Text("Selecciona la Acción Automática (REALIZA ESTO):", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    IftttActionType.values().forEach { aType ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedAction = aType }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            RadioButton(selected = selectedAction == aType, onClick = { selectedAction = aType })
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(aType.label, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = targetStageText,
+                        onValueChange = { targetStageText = it },
+                        label = { Text("Nueva Etapa del Candidato (opcional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (iftttTitle.isNotBlank()) {
+                            onAddIftttRule(
+                                WorkflowIftttRule(
+                                    id = "WFR-${System.currentTimeMillis() % 1000}",
+                                    title = iftttTitle,
+                                    triggerType = selectedTrigger,
+                                    triggerDescription = "Configurado por usuario en portal",
+                                    actionType = selectedAction,
+                                    actionDescription = "Acción automatizada activada por ${selectedTrigger.label}",
+                                    targetStage = targetStageText.ifBlank { null },
+                                    isEnabled = true
+                                )
+                            )
+                            showNewIftttDialog = false
+                        }
+                    }
+                ) {
+                    Text("Guardar Regla IFTTT")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewIftttDialog = false }) {
+                    Text("Cancelar")
+                }
             }
         )
     }

@@ -126,3 +126,32 @@ enum class TimelineEventType {
     STAGE_CHANGE,
     AI_INSIGHT
 }
+
+// 4. MOTOR DE REGLAS IFTTT (If This Then That Recruitment Workflow Engine)
+data class WorkflowIftttRule(
+    val id: String,
+    val title: String,
+    val triggerType: IftttTriggerType,
+    val triggerDescription: String,
+    val actionType: IftttActionType,
+    val actionDescription: String,
+    val targetStage: String? = null,
+    val isEnabled: Boolean = true
+)
+
+enum class IftttTriggerType(val label: String) {
+    INTERVIEW_CONFIRMED("Cuando el candidato confirma entrevista"),
+    DOCUMENTS_UPLOADED("Cuando envía documentos de ingreso"),
+    OFFER_REJECTED("Cuando rechaza la oferta o es descartado"),
+    FORM_SUBMITTED("Cuando responde formulario interno"),
+    INACTIVITY_48H("Cuando pasa 48 hrs sin responder")
+}
+
+enum class IftttActionType(val label: String) {
+    UPDATE_STAGE_AND_NOTIFY("Actualizar etapa del Pipeline + Enviar instrucciones"),
+    UPDATE_DOSSIER_AND_ALERT("Actualizar Expediente 360° + Notificar a Reclutador"),
+    CLOSE_PROCESS("Cerrar proceso y enviar encuesta de salida"),
+    SCHEDULE_EVENT("Crear evento en Agenda del Reclutador"),
+    SEND_AUTO_REMINDER("Enviar recordatorio automático por WhatsApp")
+}
+

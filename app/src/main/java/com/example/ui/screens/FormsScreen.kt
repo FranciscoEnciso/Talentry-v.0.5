@@ -30,12 +30,19 @@ fun FormsScreen(
     formSubmissions: List<FormSubmission>,
     onAddTemplate: (FormTemplate) -> Unit,
     onToggleTemplateStatus: (String) -> Unit,
+    onSimulateCandidateSubmission: (String, String, String, List<FormAnswerItem>) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var selectedTemplateId by remember { mutableStateOf(formTemplates.firstOrNull()?.id ?: "") }
     val selectedTemplate = formTemplates.firstOrNull { it.id == selectedTemplateId } ?: formTemplates.firstOrNull()
     var activeTab by remember { mutableStateOf(0) } // 0 = Constructor, 1 = Respuestas
     var showNewFormDialog by remember { mutableStateOf(false) }
+    var showPublicPreviewDialog by remember { mutableStateOf(false) }
+    var candidateNameInput by remember { mutableStateOf("Ana Rodríguez") }
+    var answerTextQ1 by remember { mutableStateOf("Sí tengo disponibilidad inmediata") }
+    var answerTextQ2 by remember { mutableStateOf("4 años operando montacargas hombre sentado") }
+    var answerTextQ3 by remember { mutableStateOf("cv_ana_rodriguez_2026.pdf") }
+    var submissionFeedback by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -229,12 +236,24 @@ fun FormsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 OutlinedButton(
-                                    onClick = { },
-                                    shape = RoundedCornerShape(12.dp)
+                                    onClick = { showPublicPreviewDialog = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.testTag("form_share_btn")
                                 ) {
                                     Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Compartir", fontSize = 12.sp)
+                                    Text("🔗 Enlace Público", fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = { showPublicPreviewDialog = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                                    modifier = Modifier.testTag("test_candidate_form_btn")
+                                ) {
+                                    Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("👤 Responder como Candidato", fontSize = 12.sp)
                                 }
 
                                 Button(
@@ -245,6 +264,30 @@ fun FormsScreen(
                                     )
                                 ) {
                                     Text(if (selectedTemplate.isActive) "Activo" else "Pausado", fontSize = 12.sp)
+                                }
+                            }
+                        }
+
+                        if (submissionFeedback != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                                border = BorderStroke(1.dp, Color(0xFF2E7D32)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { submissionFeedback = null }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32))
+                                        Text(submissionFeedback!!, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+                                    }
+                                    Text("Cerrar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                 }
                             }
                         }
@@ -490,6 +533,86 @@ fun FormsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showNewFormDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    if (showPublicPreviewDialog && selectedTemplate != null) {
+        AlertDialog(
+            onDismissRequest = { showPublicPreviewDialog = false },
+            title = {
+                Column {
+                    Text("Portal Web Público del Candidato", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("URL Compartible: https://talentry.app/form/${selectedTemplate.id}", style = MaterialTheme.typography.labelSmall, color = ElectricBlue)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = selectedTemplate.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ElectricBlue
+                    )
+                    Text(selectedTemplate.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    OutlinedTextField(
+                        value = candidateNameInput,
+                        onValueChange = { candidateNameInput = it },
+                        label = { Text("Nombre Completo del Candidato") },
+                        modifier = Modifier.fillMaxWidth().testTag("preview_candidate_name")
+                    )
+
+                    OutlinedTextField(
+                        value = answerTextQ1,
+                        onValueChange = { answerTextQ1 = it },
+                        label = { Text("P1: ¿Disponibilidad inmediata?") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = answerTextQ2,
+                        onValueChange = { answerTextQ2 = it },
+                        label = { Text("P2: ¿Años de experiencia en el puesto?") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = answerTextQ3,
+                        onValueChange = { answerTextQ3 = it },
+                        label = { Text("P3: Adjunta archivo o CV (.pdf)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val answers = listOf(
+                            FormAnswerItem("¿Disponibilidad inmediata?", answerTextQ1),
+                            FormAnswerItem("¿Años de experiencia en el puesto?", answerTextQ2),
+                            FormAnswerItem("Adjunta archivo o CV (.pdf)", answerTextQ3, fileUrl = "https://storage.talentry.app/docs/$answerTextQ3")
+                        )
+                        onSimulateCandidateSubmission(
+                            selectedTemplate.id,
+                            selectedTemplate.title,
+                            candidateNameInput,
+                            answers
+                        )
+                        submissionFeedback = "✅ Respuesta de '$candidateNameInput' enviada al portal. CRM, Expediente 360° y Timeline sincronizados."
+                        showPublicPreviewDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E8E3E)),
+                    modifier = Modifier.testTag("submit_preview_button")
+                ) {
+                    Text("🚀 Enviar Respuesta al Reclutador")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPublicPreviewDialog = false }) {
+                    Text("Cerrar Vista Previa")
+                }
             }
         )
     }

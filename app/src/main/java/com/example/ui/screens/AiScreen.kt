@@ -23,6 +23,7 @@ fun AiScreen(
     onGenerateJobDescription: (title: String, branch: String, reqs: String) -> Unit,
     onAnalyzeFit: (name: String, exp: String, vacancy: String) -> Unit,
     onGenerateAutoMessage: (name: String, stage: String) -> Unit,
+    onAnalyzeIntent: (name: String, chatSnippet: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var selectedToolIndex by remember { mutableStateOf(0) }
@@ -38,6 +39,9 @@ fun AiScreen(
 
     var candidateStageName by remember { mutableStateOf("María López") }
     var stageInput by remember { mutableStateOf("Entrevista Agendada") }
+
+    var candidateIntentName by remember { mutableStateOf("Carlos Ramírez") }
+    var chatSnippetInput by remember { mutableStateOf("Candidato confirmó interés en turno nocturno, pregunta por prestaciones de ley y tiene sus documentos INE/NSS listos.") }
 
     LazyColumn(
         modifier = modifier
@@ -89,6 +93,12 @@ fun AiScreen(
                     onClick = { selectedToolIndex = 2 },
                     text = { Text("Mensajes Auto") },
                     modifier = Modifier.testTag("ai_tab_messages")
+                )
+                Tab(
+                    selected = selectedToolIndex == 3,
+                    onClick = { selectedToolIndex = 3 },
+                    text = { Text("Intención & Chat AI") },
+                    modifier = Modifier.testTag("ai_tab_intent")
                 )
             }
         }
@@ -195,6 +205,33 @@ fun AiScreen(
                                 modifier = Modifier.fillMaxWidth().testTag("ai_run_auto_msg_button")
                             ) {
                                 Text("✨ Crear Plantilla de Mensaje")
+                            }
+                        }
+
+                        3 -> {
+                            Text("Analizador de Intención Conversacional & Riesgo", fontWeight = FontWeight.Bold)
+                            OutlinedTextField(
+                                value = candidateIntentName,
+                                onValueChange = { candidateIntentName = it },
+                                label = { Text("Nombre del Candidato") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = chatSnippetInput,
+                                onValueChange = { chatSnippetInput = it },
+                                label = { Text("Notas o Conversación del Candidato") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 3
+                            )
+
+                            Button(
+                                onClick = {
+                                    onAnalyzeIntent(candidateIntentName, chatSnippetInput)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PurpleAI),
+                                modifier = Modifier.fillMaxWidth().testTag("ai_run_intent_button")
+                            ) {
+                                Text("✨ Evaluar Intención y Próximo Paso")
                             }
                         }
                     }

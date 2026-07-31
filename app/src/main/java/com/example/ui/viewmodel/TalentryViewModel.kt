@@ -171,6 +171,15 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
         }
     }
 
+    fun analyzeConversationIntentWithAi(candidateName: String, chatSnippet: String) {
+        viewModelScope.launch {
+            _isAiLoading.value = true
+            val result = aiService.analyzeConversationIntent(candidateName, chatSnippet)
+            _aiOutputText.value = result
+            _isAiLoading.value = false
+        }
+    }
+
     fun clearAiOutput() {
         _aiOutputText.value = ""
     }
@@ -484,6 +493,22 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
         }
     }
 
+    fun addCandidateDocument(docName: String, fileName: String) {
+        val newDoc = CandidateDocument(
+            id = "DOC-${System.currentTimeMillis() % 1000}",
+            docName = docName,
+            fileName = fileName,
+            uploadDate = "Hoy",
+            status = DocumentStatus.RECEIVED
+        )
+        _candidateDocuments.value = _candidateDocuments.value + newDoc
+        addTimelineEvent(
+            title = "Documento cargado al Expediente Digital",
+            description = "Archivo '$fileName' ($docName) recibido y listo para validación de RH.",
+            type = TimelineEventType.FORM_SUBMITTED
+        )
+    }
+
     fun addTimelineEvent(title: String, description: String, type: TimelineEventType) {
         val newEvt = DossierTimelineEvent(
             id = "EVT-${System.currentTimeMillis() % 10000}",
@@ -494,4 +519,129 @@ class TalentryViewModel(application: AndroidApp) : AndroidViewModel(application)
         )
         _dossierTimeline.value = listOf(newEvt) + _dossierTimeline.value
     }
+
+    // =========================================================================
+    // 4. MOTOR DE REGLAS IFTTT (If This Then That Recruitment Workflow Engine)
+    // =========================================================================
+    private val _workflowIftttRules = MutableStateFlow(
+        listOf(
+            WorkflowIftttRule(
+                id = "WFR-01",
+                title = "Si confirma entrevista -> Actualizar etapa + Instrucciones",
+                triggerType = IftttTriggerType.INTERVIEW_CONFIRMED,
+                triggerDescription = "Candidato responde aceptando horario de entrevista",
+                actionType = IftttActionType.UPDATE_STAGE_AND_NOTIFY,
+                actionDescription = "Cambiar etapa en Pipeline a 'Entrevista', crear evento y enviar PDF de llegada",
+                targetStage = "Entrevista",
+                isEnabled = true
+            ),
+            WorkflowIftttRule(
+                id = "WFR-02",
+                title = "Si envía documentos de ingreso -> Actualizar Expediente 360°",
+                triggerType = IftttTriggerType.DOCUMENTS_UPLOADED,
+                triggerDescription = "Candidato sube archivos en portal web o WhatsApp",
+                actionType = IftttActionType.UPDATE_DOSSIER_AND_ALERT,
+                actionDescription = "Marcar expediente en revisión y enviar alerta push al Reclutador Senior",
+                targetStage = "Documentos",
+                isEnabled = true
+            ),
+            WorkflowIftttRule(
+                id = "WFR-03",
+                title = "Si rechaza oferta -> Cerrar proceso + Cuestionario salida",
+                triggerType = IftttTriggerType.OFFER_REJECTED,
+                triggerDescription = "Candidato indica que ya aceptó otra propuesta laboral",
+                actionType = IftttActionType.CLOSE_PROCESS,
+                actionDescription = "Actualizar estado a 'Descartado' y enviar link de encuesta de motivos",
+                targetStage = "Descartado",
+                isEnabled = true
+            ),
+            WorkflowIftttRule(
+                id = "WFR-04",
+                title = "Si pasa 48 hrs sin respuesta -> Recordatorio automático",
+                triggerType = IftttTriggerType.INACTIVITY_48H,
+                triggerDescription = "Candidato convocado que no ha contestado llamada ni mensaje",
+                actionType = IftttActionType.SEND_AUTO_REMINDER,
+                actionDescription = "Enviar mensaje de seguimiento amable con botón para reagendar",
+                targetStage = null,
+                isEnabled = true
+            )
+        )
+    )
+    val workflowIftttRules: StateFlow<List<WorkflowIftttRule>> = _workflowIftttRules.asStateFlow()
+
+    fun addWorkflowIftttRule(rule: WorkflowIftttRule) {
+        _workflowIftttRules.value = _workflowIftttRules.value + rule
+    }
+
+    fun toggleWorkflowIftttRule(ruleId: String) {
+        _workflowIftttRules.value = _workflowIftttRules.value.map {
+            if (it.id == ruleId) it.copy(isEnabled = !it.isEnabled) else it
+        }
+    }
+
+    fun executeWorkflowIftttRule(rule: WorkflowIftttRule, candidateName: String = "Carlos Ramírez") {
+        // 1. Log timeline event
+        addTimelineEvent(
+            title = "Regla IFTTT Ejecutada: ${rule.title}",
+            description = "Disparador: ${rule.triggerType.label} • Acción: ${rule.actionDescription}",
+            type = TimelineEventType.WHATSAPP_AUTO
+        )
+
+        // 2. Add automated WhatsApp message
+        val autoMsgText = when (rule.actionType) {
+            IftttActionType.UPDATE_STAGE_AND_NOTIFY -> "¡Hola $candidateName! Tu entrevista ha sido agendada con éxito. Te hemos adjuntado las instrucciones y mapa para llegar a la planta."
+            IftttActionType.UPDATE_DOSSIER_AND_ALERT -> "Hemos recibido correctamente tus documentos oficiales. El reclutador Francisco está validando tu expediente en este momento."
+            IftttActionType.CLOSE_PROCESS -> "Agradecemos mucho tu interés en Talentry, $candidateName. Hemos cerrado tu proceso y te agradecemos contestar esta breve encuesta de 1 minuto."
+            IftttActionType.SCHEDULE_EVENT -> "Se ha programado una sesión especial en tu calendario para el seguimiento técnico con el área usuaria."
+            IftttActionType.SEND_AUTO_REMINDER -> "¡Hola $candidateName! Vimos que aún está pendiente tu confirmación para Operador de Montacargas. ¿Te gustaría reagendar para otro día?"
+        }
+
+        val botMsg = WhatsAppMessage(
+            id = "MSG-${System.currentTimeMillis() % 10000}",
+            candidateId = "CAND-01",
+            candidateName = candidateName,
+            sender = MessageSender.BOT_AUTOMATION,
+            content = autoMsgText,
+            timestamp = "Ahora",
+            triggeredRuleTitle = "Motor IFTTT: ${rule.title}"
+        )
+        _whatsAppMessages.value = _whatsAppMessages.value + botMsg
+
+        // 3. Update candidate stage if applicable
+        if (rule.targetStage != null) {
+            val currentList = candidates.value
+            currentList.find { it.fullName.contains(candidateName, ignoreCase = true) || it.id == "CAND-01" }?.let { cand ->
+                updateCandidate(cand.copy(currentStatus = rule.targetStage))
+            }
+        }
+    }
+
+    fun addFormSubmissionFromCandidate(formTemplateId: String, formTitle: String, candidateName: String, answers: List<FormAnswerItem>) {
+        val newSub = FormSubmission(
+            id = "SUB-${System.currentTimeMillis() % 10000}",
+            formTemplateId = formTemplateId,
+            formTitle = formTitle,
+            candidateId = "CAND-01",
+            candidateName = candidateName,
+            submittedAt = "Ahora mismo",
+            answers = answers,
+            aiScore = 95
+        )
+        _formSubmissions.value = listOf(newSub) + _formSubmissions.value
+
+        // Check if there is a file upload among answers
+        answers.filter { it.fileUrl != null || it.answerText.endsWith(".pdf", ignoreCase = true) }.forEach { ans ->
+            addCandidateDocument(
+                docName = ans.questionPrompt.take(28),
+                fileName = ans.answerText
+            )
+        }
+
+        addTimelineEvent(
+            title = "Formulario Respondido por Candidato: $formTitle",
+            description = "Respuestas recibidas de $candidateName • Score IA automático: 95% compatible.",
+            type = TimelineEventType.FORM_SUBMITTED
+        )
+    }
 }
+

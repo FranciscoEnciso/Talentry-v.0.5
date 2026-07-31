@@ -92,4 +92,16 @@ class GeminiAiService {
         val prompt = "Redacta un mensaje amable de WhatsApp/SMS corto para enviar al candidato $candidateName que se encuentra en la etapa: $stage. Incluye indicación clara de siguientes pasos."
         return generateContent(prompt)
     }
+
+    suspend fun analyzeConversationIntent(candidateName: String, chatSnippet: String): String {
+        val prompt = """
+            Analiza como especialista en reclutamiento la intención conversacional y probabilidad de contratación del candidato $candidateName según esta conversación o nota de seguimiento: "$chatSnippet".
+            Proporciona:
+            1) Nivel de Intención de Contratación (Ej: Alta Intención - 96% Probabilidad)
+            2) Resumen Ejecutivo de la Conversación
+            3) Siguiente Paso y Sugerencia de Acción para el Reclutador
+        """.trimIndent()
+        return generateContent(prompt)
+    }
 }
+

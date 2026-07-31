@@ -32,6 +32,7 @@ fun ExpedienteDigitalScreen(
     messages: List<WhatsAppMessage>,
     formSubmissions: List<FormSubmission>,
     onUpdateDocumentStatus: (String, DocumentStatus) -> Unit,
+    onAddDocument: (String, String) -> Unit = { _, _ -> },
     onAddTimelineEvent: (String, String, TimelineEventType) -> Unit,
     onNavigateToWhatsApp: () -> Unit,
     modifier: Modifier = Modifier
@@ -39,6 +40,7 @@ fun ExpedienteDigitalScreen(
     var selectedCandidateId by remember { mutableStateOf(candidates.firstOrNull()?.id ?: "CAND-01") }
     val selectedCandidate = candidates.firstOrNull { it.id == selectedCandidateId } ?: candidates.firstOrNull()
     var activeTab by remember { mutableStateOf(0) } // 0 = Checklist Documental, 1 = Línea del Tiempo, 2 = WhatsApp, 3 = Formularios
+    var showAddDocDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -336,11 +338,27 @@ fun ExpedienteDigitalScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 item {
-                                    Text(
-                                        text = "Gestión Documental Integrada. Verifica o solicita documentos sin salir de Talentry.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Gestión Documental Integrada 360°",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Button(
+                                            onClick = { showAddDocDialog = true },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue),
+                                            modifier = Modifier.testTag("add_doc_btn")
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Subir / Solicitar", fontSize = 12.sp)
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
 
@@ -586,5 +604,55 @@ fun ExpedienteDigitalScreen(
                 }
             }
         }
+    }
+
+    if (showAddDocDialog) {
+        var docNameInput by remember { mutableStateOf("") }
+        var fileNameInput by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showAddDocDialog = false },
+            title = { Text("Adjuntar Documento al Expediente 360°", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Los archivos adjuntados se vinculan de inmediato al candidato seleccionado y quedan disponibles para el equipo de RH.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = docNameInput,
+                        onValueChange = { docNameInput = it },
+                        label = { Text("Tipo de Documento (Ej: CURP / Comprobante)") },
+                        placeholder = { Text("Ej: Comprobante de Domicilio 2026") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = fileNameInput,
+                        onValueChange = { fileNameInput = it },
+                        label = { Text("Nombre del Archivo") },
+                        placeholder = { Text("Ej: recibo_luz_candidato.pdf") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (docNameInput.isNotBlank()) {
+                            onAddDocument(
+                                docNameInput,
+                                fileNameInput.ifBlank { "adjunto_rh_2026.pdf" }
+                            )
+                            showAddDocDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricBlue)
+                ) {
+                    Text("Subir al Expediente")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDocDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
